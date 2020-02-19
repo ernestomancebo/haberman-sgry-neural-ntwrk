@@ -3,7 +3,6 @@ import random
 
 import matplotlib as mpl
 import matplotlib.animation
-import mglearn
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -48,7 +47,7 @@ def print_rendimiento(entrenamiento, prueba, total):
     print("Rendimiento en el conjunto total: ", total)
 
 
-def generar_modelo(solver="lbfgs", f_activation="activation", capas=(20,), aprendizaje=0.0001, batch="auto", max_iter=200):
+def generar_modelo(solver="lbfgs", f_activation="logistic", capas=(20,), aprendizaje=0.0001, batch="auto", max_iter=200):
     mlp_modelo = MLPClassifier(
         solver=solver, random_state=0, hidden_layer_sizes=capas, activation=f_activation, alpha=aprendizaje, batch_size=batch, max_iter=max_iter)
     mlp_modelo.fit(X_train, y_train)
