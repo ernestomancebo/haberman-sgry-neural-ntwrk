@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
+from scipy import stats
+from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 
@@ -15,30 +17,80 @@ column_names = [
 ]
 target_name = "survival_status"
 
-csv = pd.read_csv("haberman.data", names=column_names)
+df = pd.read_csv("haberman.data", names=column_names)
 
-target_data = csv.iloc[:, -1]
-fields_data = csv.iloc[:, :-1]
 
-haberman_dataframe = pd.DataFrame(fields_data, columns=column_names[:-1])
-haberman_dataframe.head(10)
+def separar_dataframe(dataframe):
+    return (dataframe.iloc[:, -1], dataframe.iloc[:, :-1])
 
-sp = pd.plotting.scatter_matrix(haberman_dataframe, c=target_data, figsize=(
-    15, 15), marker='D', hist_kwds={'bins': 20}, s=60, alpha=.8)
 
-sns.pairplot(data=csv, hue=target_name, markers=[
-             "o", "D"], vars=column_names[:-1])
+def boxplot(data, title=''):
+    sns.boxplot(data=data, orient='h').set_title(title)
 
-corr = csv.corr()
+
+def pairplot(data, target, columns):
+    sns.pairplot(data=data, hue=target, markers=["o", "D"], vars=columns)
+
+
+target_data, fields_data = separar_dataframe(df)
+
+# Explorando la data
+sns.set_style('whitegrid')
+pairplot(df, target_name, column_names[:-1])
+
+corr = df.corr()
 sns.heatmap(corr)
 
-sns.lmplot(x="axillary_nodes_detected", y="age_of_patient",
-           data=csv, hue=target_name, fit_reg=True)
+# Identificando Outliers
+boxplot(fields_data, "DataFrame Crudo")
+boxplot(df['axillary_nodes_detected'], "Axillary Nodes Detected")
+sns.distplot(df['axillary_nodes_detected'])
 
-sns.boxplot(data=csv, orient='h')
+# Procesando Outliers
+df['axillary_nodes_detected'].describe()
 
-X_train, X_test, y_train, y_test = train_test_split(fields_data, target_data, stratify=target_data,
-                                                    random_state=42, test_size=0.1)
+# Excluyendo Outliers en axillary_nodes_detected por encima de 4
+df_ol = df[df.axillary_nodes_detected <= 4]
+df_ol.shape
+
+# Visualizando la data luego de procesar
+pairplot(df_ol, target_name, column_names[:-1])
+boxplot(df_ol['axillary_nodes_detected'],
+        "Axillary Nodes Detected post procesado")
+
+# Procesando Outliers con Z Score
+z_score = np.abs(stats.zscore(df))
+print(z_score)
+
+threshold = 3
+print(np.where(z_score > threshold))
+
+df_z = df[(z_score < 3).all(axis=1)]
+df_z.shape
+
+# Visualizando la data luego de procesar
+pairplot(df_z, target_name, column_names[:-1])
+boxplot(df_z['axillary_nodes_detected'],
+        "Axillary Nodes Detected post z-score")
+
+# Procesando Outliers para el DataFrame completo
+q1 = df.quantile(0.25)
+q3 = df.quantile(0.75)
+iqr = q3 - q1
+print(iqr)
+
+df_qol = df[~((df < (q1 - 1.5 * iqr)) | (df > (q3 + 1.5 * iqr))).any(axis=1)]
+df_qol.shape
+
+# Visualizando la data luego de procesar
+pairplot(df_qol, target_name, column_names[:-1])
+boxplot(df_qol['axillary_nodes_detected'],
+        "Axillary Nodes Detected post IQR")
+
+# Iniciando Data
+
+X_train, X_test, y_train, y_test = train_test_split(
+    fields_data, target_data, stratify=target_data)
 
 
 def print_rendimiento(entrenamiento, prueba, total):
